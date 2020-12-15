@@ -10,11 +10,11 @@ env.seed(42)
 print("env", env)
 
 if __name__ == "__main__":
-
+	torch.set_printoptions(precision=2, sci_mode=False)
 	torch.manual_seed(42)
 	deg2rad = lambda x: x * 3.1415926536 / 180.
 	rad2deg = lambda x: x * 180. / 3.1415926536
-	amount_particles = 5
+	amount_particles = 48
 
 	actions = deg2rad(torch.tensor([-1, 0, 1]))
 	#actions_desc = torch.tensor(["<", "^", ">"])
@@ -22,8 +22,8 @@ if __name__ == "__main__":
 
 	optimizer = torch.optim.Adam(mfmaac.parameters(), lr=0.01, betas=(0.9, 0.999)) #lr=0.02
 	epochs = 300
-	measurements = 20
-	timestep_size = 100 # 100*.2s*4deg/s = 80 deg (enough to see new behaviour)
+	measurements = 500
+	timestep_size = 10 # 100*.2s*4deg/s = 80 deg (enough to see new behaviour)
 	rewards = []
 	angles = []
 	use_means = False
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 		prev_reward = env.states[-1].O_R
 		for j in range(measurements):
 
-			print(f"Delta {rad2deg(env.states[-1].Delta)!r}")
+			print(f"Delta {rad2deg(env.states[-1].Delta).type(torch.int16)!r}")
 			action = mfmaac(env.states[-1])
 			print(f"actions {action!r}")
 			angles.append(env.states[-1].Delta)
@@ -54,44 +54,24 @@ if __name__ == "__main__":
 
 			print(f"O_R {env.states[-1].O_R!r}")
 			# bonus = 0
-			# if env.states[-1].Delta < 0:
-			# 	if actions[action] < 0:
-			# 		reward = 0.#-1 + 10 * (aps.Delta.item())
-			# 	elif actions[action] == 0:
-			# 		reward = 0.
-			# 	else:
-			# 		reward = .1
-			# elif env.states[-1].Delta > 3.1415926536:
-			# 	if actions[action] < 0:
-			# 		reward = .1
-			# 	elif actions[action] == 0:
-			# 		reward = 0.
-			# 	else:
-			# 		reward = 0.#-1 - 10 * (aps.Delta.item() - 3.1415926536)
-			# elif action == prev_action:
-			# 	if actions[action] == 0:
-			# 		bonus = 0.01
-			# 	else:
-			# 		bonus = 0.02
-			# 	print("Bonus: ^")
-			# elif actions[action] != 0 and actions[prev_action] != 0:
-			# 	bonus = -0.01
-			# 	print("Bonus: v")
-			# else:
-			# 	print("Bonus: -")
+			negative_angle = (env.states[-1].Delta < 0.0)
+			small_reward = torch.tensor([.1])
+			no_reward = torch.tensor([.0])
+			reward = torch.where(negative_angle,
+				torch.where(action == 2, small_reward, no_reward),
+				reward)
+			too_large_angle = (env.states[-1].Delta > 3.1415926536)
+			reward = torch.where(too_large_angle,
+				torch.where(action == 0, small_reward, no_reward),
+				reward)
 
-			# if use_bonuses:
-			# 	if reward < 0:
-			# 		reward *= (1-bonus)
-			# 	else:
-			# 		reward *= (1+bonus)
 
 			rel_reward = reward - prev_reward
 			prev_reward = reward
 			mfmaac.rewards.append(rel_reward)
 			print(f"reward {rel_reward}")
 			#print(f"reward {reward:.2f}")
-			prev_action = action
+			prev_action = action.clone()
 
 		rewards += mfmaac.rewards
 		loss = mfmaac.calculateLoss_old()
@@ -103,6 +83,6 @@ if __name__ == "__main__":
 		#print("mean reward", torch.tensor(rewards).mean().item())
 		#print("mean angles", torch.tensor(angles).mean().item())
 
-	weightpath = f"acdd_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
+	weightpath = f"mfmaac_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
 	print("Storing weights:", weightpath)
 	torch.save(mfmaac.state_dict(), weightpath)
