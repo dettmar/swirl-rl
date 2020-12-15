@@ -1,0 +1,3 @@
+[submodule "gym-swirl"]
+	path = gym-swirl
+	url = https://github.com/dettmar/gym-swirl.git
