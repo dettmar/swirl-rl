@@ -26,11 +26,8 @@ class MFMAAC(nn.Module):
 
 
 	def forward(self, state):
-		Delta = state.Delta
-		OR = state.O_R
-		Delta = Delta.reshape((-1, 1)).float()
+		Delta = state.Delta.reshape((-1, 1)).float()
 		Delta = F.relu(self.affine(Delta))
-		#abs_O_R = torch.abs(O_R)
 		state_value = self.value_layer(Delta)
 
 		action_probs = F.softmax(self.action_layer(Delta))
@@ -40,7 +37,6 @@ class MFMAAC(nn.Module):
 		action = action_distribution.sample()
 		self.logprobs.append(action_distribution.log_prob(action))
 
-		#print("action_distribution.log_prob(action)", action_distribution.log_prob(action))
 		self.state_values.append(state_value)
 
 		return action
@@ -62,9 +58,9 @@ class MFMAAC(nn.Module):
 
 		rewards = torch.stack(rewards).float().squeeze()
 
-		rewards = (rewards - rewards.mean(axis=0)) / (rewards.std(axis=0))
+		#rewards = (rewards - rewards.mean(axis=0)) / (rewards.std(axis=0))
 		#print("rewards afte", rewards)
-		#rewards /= rewards.std()
+		rewards /= rewards.std()
 
 		loss = torch.tensor(0.).reshape((1,))
 		amount = self.rewards[0].numel()
