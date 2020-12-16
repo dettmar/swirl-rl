@@ -65,6 +65,9 @@ if __name__ == "__main__":
 				torch.where(action == 0, small_reward, no_reward),
 				reward)
 
+			if use_bonuses:
+				bonus = torch.where(action == prev_action, small_reward*.1, no_reward)
+				reward *= torch.where(reward < 0., (1-bonus), (1+bonus))
 
 			rel_reward = reward - prev_reward
 			prev_reward = reward
