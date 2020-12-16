@@ -1,7 +1,8 @@
-import sys
+import os
 import datetime
 import gym
 import torch
+from utils import *
 from MFMAAC import MFMAAC
 
 env = gym.make('gym_swirl:swirl-v1')
@@ -12,8 +13,7 @@ print("env", env)
 if __name__ == "__main__":
 	torch.set_printoptions(precision=2, sci_mode=False)
 	torch.manual_seed(42)
-	deg2rad = lambda x: x * 3.1415926536 / 180.
-	rad2deg = lambda x: x * 180. / 3.1415926536
+
 	amount_particles = 48
 
 	actions = deg2rad(torch.tensor([-1, 0, 1]))
@@ -28,6 +28,7 @@ if __name__ == "__main__":
 	angles = []
 	use_means = False
 	use_bonuses = True
+
 	for i in range(epochs):
 		print("epoch"*20, i)
 		Delta = torch.randint(0, 180, size=(1,)).repeat(amount_particles)
@@ -87,5 +88,6 @@ if __name__ == "__main__":
 		#print("mean angles", torch.tensor(angles).mean().item())
 
 	weightpath = f"mfmaac_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
+	weightpath = os.path.join(os.path.dirname(__file__), "weights", weightpath)
 	print("Storing weights:", weightpath)
 	torch.save(mfmaac.state_dict(), weightpath)
