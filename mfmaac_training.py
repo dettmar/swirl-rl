@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	mfmaac = MFMAAC(num_inputs=1, num_actions=3)
 
 	optimizer = torch.optim.Adam(mfmaac.parameters(), lr=0.01, betas=(0.9, 0.999)) #lr=0.02
-	epochs = 300
+	epochs = 200
 	measurements = 500
 	timestep_size = 10 # 100*.2s*4deg/s = 80 deg (enough to see new behaviour)
 	rewards = []
@@ -42,18 +42,21 @@ if __name__ == "__main__":
 		rewards = []
 		angles = []
 		prev_action = 0
+		target_OR = torch.tensor([0.7])
 		prev_reward = env.states[-1].O_R
 		for j in range(measurements):
 
-			print(f"Delta {rad2deg(env.states[-1].Delta).type(torch.int16)!r}")
+			print(f"Delta {rad2deg(env.states[-1].Delta).mean().type(torch.int16)!r}")
 			action = mfmaac(env.states[-1])
-			print(f"actions {action!r}")
+			#print(f"actions {action!r}")
 			angles.append(env.states[-1].Delta)
 
 			env.step(actions[action], 1, timestep_size)
-			reward = env.states[-1].O_R.abs()
+			ORs = env.states[-1].O_R.abs()
+			reward = 1-(ORs - target_OR).abs()
 
 			print(f"O_R {env.states[-1].O_R!r}")
+			print(f"O_R mean {env.states[-1].O_R.mean()!r}")
 			# bonus = 0
 			negative_angle = (env.states[-1].Delta < 0.0)
 			small_reward = torch.tensor([.1])
@@ -73,8 +76,7 @@ if __name__ == "__main__":
 			rel_reward = reward - prev_reward
 			prev_reward = reward
 			mfmaac.rewards.append(rel_reward)
-			print(f"reward {rel_reward}")
-			#print(f"reward {reward:.2f}")
+			print(f"reward {rel_reward.mean()}")
 			prev_action = action.clone()
 
 		rewards += mfmaac.rewards
