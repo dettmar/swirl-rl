@@ -8,8 +8,6 @@ from MFMAAC import MFMAAC
 env = gym.make('gym_swirl:swirl-v1')
 env.seed(42)
 
-print("env", env)
-
 if __name__ == "__main__":
 	torch.set_printoptions(precision=2, sci_mode=False)
 	torch.manual_seed(42)
