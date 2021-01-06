@@ -26,13 +26,14 @@ class MFMAAC(nn.Module):
 
 
 	def forward(self, state):
-		Delta = state.Delta.reshape((-1, 1)).float()
-		Delta = F.relu(self.affine(Delta))
-		state_value = self.value_layer(Delta)
+		Deltas = state.Deltas.reshape((-1, 1)).float()
+		Deltas = F.relu(self.affine(Deltas))
+		state_value = self.value_layer(Deltas)
 
-		action_probs = F.softmax(self.action_layer(Delta))
+		action_probs = F.softmax(self.action_layer(Deltas))
 		print("action_probs")
-		print(f"{action_probs!r}")
+		#print(f"{action_probs!r}")
+		print(f"{action_probs.mean(axis=0)!r}")
 		action_distribution = Categorical(action_probs)
 		action = action_distribution.sample()
 		self.logprobs.append(action_distribution.log_prob(action))

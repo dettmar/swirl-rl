@@ -27,42 +27,43 @@ if __name__ == "__main__":
 	use_means = False
 	use_bonuses = True
 
-	for i in range(epochs):
-		print("epoch"*20, i)
-		Delta = torch.randint(0, 180, size=(1,)).repeat(amount_particles)
+	for epoch in range(epochs):
+		print(f" EPOCH {epoch} ".center(80, "#"))
+		Deltas = torch.randint(0, 180, size=(1,)).repeat(amount_particles)
 
-		env.reset(Delta=deg2rad(Delta),
+		env.reset(Deltas=deg2rad(Deltas),
 			DT=1.7441998757264687e-14,
 			DR=0.012178413663250922,
 			Gamma=6,
 			amount=amount_particles)
-		env.step(0., int(200/0.2))
+		env.step(0., 1, int(200/0.2))
 		rewards = []
 		angles = []
 		prev_action = 0
-		target_OR = torch.tensor([0.7])
+		target_OR = torch.tensor([1.0])
 		prev_reward = env.states[-1].O_R
 		for j in range(measurements):
 
-			print(f"Delta {rad2deg(env.states[-1].Delta).mean().type(torch.int16)!r}")
+			print(f"Deltas {rad2deg(env.states[-1].Deltas).mean().type(torch.int16)!r}")
 			action = mfmaac(env.states[-1])
 			#print(f"actions {action!r}")
-			angles.append(env.states[-1].Delta)
+			angles.append(env.states[-1].Deltas)
 
 			env.step(actions[action], 1, timestep_size)
 			ORs = env.states[-1].O_R.abs()
-			reward = 1-(ORs - target_OR).abs()
+			#reward = 1 - (ORs - target_OR).abs()
+			reward = ORs
 
 			print(f"O_R {env.states[-1].O_R!r}")
 			print(f"O_R mean {env.states[-1].O_R.mean()!r}")
 			# bonus = 0
-			negative_angle = (env.states[-1].Delta < 0.0)
+			negative_angle = (env.states[-1].Deltas < 0.0)
 			small_reward = torch.tensor([.1])
 			no_reward = torch.tensor([.0])
 			reward = torch.where(negative_angle,
 				torch.where(action == 2, small_reward, no_reward),
 				reward)
-			too_large_angle = (env.states[-1].Delta > 3.1415926536)
+			too_large_angle = (env.states[-1].Deltas > 3.1415926536)
 			reward = torch.where(too_large_angle,
 				torch.where(action == 0, small_reward, no_reward),
 				reward)
@@ -84,6 +85,9 @@ if __name__ == "__main__":
 		loss.backward()
 		optimizer.step()
 		mfmaac.clear_memory()
+
+		states_path = os.path.join(os.path.dirname(__file__), "runs", f"mfmaac_train_epoch{epoch}")
+		env.save(states_path)
 		#print("mean reward", torch.tensor(rewards).mean().item())
 		#print("mean angles", torch.tensor(angles).mean().item())
 
