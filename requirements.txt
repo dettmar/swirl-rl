@@ -1,6 +1,6 @@
 matplotlib
 numpy 
-ptuna
+optuna
 pandas
 scipy
 tensorboard
