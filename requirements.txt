@@ -1,0 +1,9 @@
+matplotlib
+numpy 
+ptuna
+pandas
+scipy
+tensorboard
+pytorch
+torchvision
+cudatoolkit==11.0
