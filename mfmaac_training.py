@@ -5,6 +5,9 @@ import torch
 from utils import *
 from MFMAAC import MFMAAC
 
+# set the true number of threads
+torch.set_num_threads(os.cpu_count())
+
 env = gym.make('gym_swirl:swirl-v1')
 env.seed(42)
 
@@ -17,6 +20,9 @@ if __name__ == "__main__":
 	actions = deg2rad(torch.tensor([-1, 0, 1]))
 	#actions_desc = torch.tensor(["<", "^", ">"])
 	mfmaac = MFMAAC(num_inputs=1, num_actions=3)
+	#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	#print("Model device", device)
+	#mfmaac.to(device)
 
 	optimizer = torch.optim.Adam(mfmaac.parameters(), lr=0.01, betas=(0.9, 0.999)) #lr=0.02
 	epochs = 200
@@ -30,6 +36,7 @@ if __name__ == "__main__":
 	for epoch in range(epochs):
 		print(f" EPOCH {epoch} ".center(80, "#"))
 		Deltas = torch.randint(0, 180, size=(1,)).repeat(amount_particles)
+		#Deltas.to(device)
 
 		env.reset(Deltas=deg2rad(Deltas),
 			DT=1.7441998757264687e-14,
@@ -87,7 +94,7 @@ if __name__ == "__main__":
 		mfmaac.clear_memory()
 
 		states_path = os.path.join(os.path.dirname(__file__), "runs", f"mfmaac_train_epoch{epoch}")
-		env.save(states_path)
+		#env.save(states_path)
 		#print("mean reward", torch.tensor(rewards).mean().item())
 		#print("mean angles", torch.tensor(angles).mean().item())
 
