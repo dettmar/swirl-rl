@@ -24,17 +24,28 @@ if __name__ == "__main__":
 	#print("Model device", device)
 	#mfmaac.to(device)
 
-	optimizer = torch.optim.Adam(mfmaac.parameters(), lr=0.01, betas=(0.9, 0.999)) #lr=0.02
-	epochs = 200
+	optimizer = torch.optim.Adam(mfmaac.parameters(),
+		lr=0.01,
+		weight_decay=0.9,
+		betas=(0.9, 0.999)) #lr=0.02
+	#optimizer = torch.optim.SGD(mfmaac.parameters(),
+	#	lr=.01)
+	scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: 0.99**x)
+	epochs = 500
 	measurements = 500
-	timestep_size = 10 # 100*.2s*4deg/s = 80 deg (enough to see new behaviour)
+	attempt = 10
+	timestep_size = 10 # 10*.2s*4deg/s = max 8 deg (enough to see new behaviour)
 	rewards = []
 	angles = []
 	use_means = False
 	use_bonuses = True
+	save_states = True
+	save_intermediate_weights = True
+	save_every_n = 50
+	
 
 	for epoch in range(epochs):
-		print(f" EPOCH {epoch} ".center(80, "#"))
+		print(f" EPOCH {epoch} ".center(60, "#"))
 		Deltas = torch.randint(0, 180, size=(1,)).repeat(amount_particles)
 		#Deltas.to(device)
 
@@ -51,18 +62,18 @@ if __name__ == "__main__":
 		prev_reward = env.states[-1].O_R
 		for j in range(measurements):
 
-			print(f"Deltas {rad2deg(env.states[-1].Deltas).mean().type(torch.int16)!r}")
+			print(f"Deltas mean {rad2deg(env.states[-1].Deltas).mean().type(torch.int16).item()}, std {rad2deg(env.states[-1].Deltas).std().item():.2f}")
 			action = mfmaac(env.states[-1])
 			#print(f"actions {action!r}")
 			angles.append(env.states[-1].Deltas)
 
 			env.step(actions[action], 1, timestep_size)
-			ORs = env.states[-1].O_R.abs()
+			ORs = env.states[-1].O_R
 			#reward = 1 - (ORs - target_OR).abs()
-			reward = ORs
+			reward = ORs.abs()
 
-			print(f"O_R {env.states[-1].O_R!r}")
-			print(f"O_R mean {env.states[-1].O_R.mean()!r}")
+			#print(f"O_R {env.states[-1].O_R!r}")
+			print(f"O_R mean {env.states[-1].O_R.mean().item():.2f}, std {env.states[-1].O_R.std().item():.2f}")
 			# bonus = 0
 			negative_angle = (env.states[-1].Deltas < 0.0)
 			small_reward = torch.tensor([.1])
@@ -86,19 +97,29 @@ if __name__ == "__main__":
 			prev_action = action.clone()
 
 		rewards += mfmaac.rewards
-		loss = mfmaac.calculateLoss_old()
+		loss = mfmaac.calculate_loss()
 		print("loss", loss)
+
+		for param_group in optimizer.param_groups:
+			print("lr", param_group['lr'])
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
+		scheduler.step()
 		mfmaac.clear_memory()
 
-		states_path = os.path.join(os.path.dirname(__file__), "runs", f"mfmaac_train_epoch{epoch}")
-		#env.save(states_path)
+		if save_states:
+			states_path = os.path.join(os.path.dirname(__file__), "runs", f"mfmaac{attempt:03d}_train_epoch{epoch}")
+			env.save(states_path)
 		#print("mean reward", torch.tensor(rewards).mean().item())
 		#print("mean angles", torch.tensor(angles).mean().item())
+		if save_intermediate_weights and epoch % 100 == 0 and epoch != 0:
+			weightpath = f"mfmaac{attempt:03d}_epochs{epoch}of{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
+			weightpath = os.path.join(os.path.dirname(__file__), "weights", weightpath)
+			torch.save(mfmaac.state_dict(), weightpath)
+			print("Storing weights:", weightpath)
 
-	weightpath = f"mfmaac_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
+	weightpath = f"mfmaac{attempt:03d}_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
 	weightpath = os.path.join(os.path.dirname(__file__), "weights", weightpath)
 	print("Storing weights:", weightpath)
 	torch.save(mfmaac.state_dict(), weightpath)
