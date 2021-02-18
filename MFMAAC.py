@@ -31,9 +31,7 @@ class MFMAAC(nn.Module):
 		state_value = self.value_layer(Deltas)
 
 		action_probs = F.softmax(self.action_layer(Deltas))
-		print("action_probs")
-		#print(f"{action_probs!r}")
-		print(f"{action_probs.mean(axis=0)!r}")
+		print(f"action_probs {action_probs.mean(axis=0)!r}")
 		action_distribution = Categorical(action_probs)
 		action = action_distribution.sample()
 		self.logprobs.append(action_distribution.log_prob(action))
@@ -43,7 +41,7 @@ class MFMAAC(nn.Module):
 		return action
 
 
-	def calculateLoss_old(self, gamma=0.99):
+	def calculate_loss(self, gamma=0.99):
 
 		# calculating discounted rewards:
 		rewards = []
@@ -52,16 +50,9 @@ class MFMAAC(nn.Module):
 			dis_reward = reward + gamma * dis_reward
 			rewards.insert(0, dis_reward)
 
-		#print("self.rewards", self.rewards)
-		#print("rewards befo", rewards)
-
 		# normalizing the rewards:
-
 		rewards = torch.stack(rewards).float().squeeze()
-
-		#rewards = (rewards - rewards.mean(axis=0)) / (rewards.std(axis=0))
-		#print("rewards afte", rewards)
-		rewards /= rewards.std()
+		rewards = rewards / rewards.std(dim=0) # calc along axis of time for each particle
 
 		loss = torch.tensor(0.).reshape((1,))
 		amount = self.rewards[0].numel()
@@ -76,8 +67,6 @@ class MFMAAC(nn.Module):
 				loss += (action_loss + value_loss)
 
 		return loss
-
-
 
 
 	def clear_memory(self):
