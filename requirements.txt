@@ -3,7 +3,9 @@ numpy
 optuna
 pandas
 scipy
-tensorboard
+#tensorboard
+gym
 pytorch
 torchvision
-cudatoolkit==11.0
+jupyter-lab
+#cudatoolkit==11.0
