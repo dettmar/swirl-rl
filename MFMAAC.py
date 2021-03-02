@@ -1,11 +1,8 @@
-print("Start file")
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 #from pytorch_lightning.core.lightning import LightningModule
-
-print("Imported all")
 
 class MFMAAC(nn.Module):
 
@@ -30,15 +27,15 @@ class MFMAAC(nn.Module):
 		Deltas = F.relu(self.affine(Deltas))
 		state_value = self.value_layer(Deltas)
 
-		action_probs = F.softmax(self.action_layer(Deltas))
-		print(f"action_probs {action_probs.mean(axis=0)!r}")
+		action_probs = F.softmax(self.action_layer(Deltas), dim=1)
+		
 		action_distribution = Categorical(action_probs)
 		action = action_distribution.sample()
 		self.logprobs.append(action_distribution.log_prob(action))
 
 		self.state_values.append(state_value)
 
-		return action
+		return action, action_probs
 
 
 	def calculate_loss(self, gamma=0.99):
@@ -52,7 +49,7 @@ class MFMAAC(nn.Module):
 
 		# normalizing the rewards:
 		rewards = torch.stack(rewards).float().squeeze()
-		rewards = rewards / rewards.std(dim=0) # calc along axis of time for each particle
+		rewards = (rewards - rewards.mean(dim=0)) / rewards.std(dim=0) # calc along axis of time for each particle
 
 		loss = torch.tensor(0.).reshape((1,))
 		amount = self.rewards[0].numel()
