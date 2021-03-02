@@ -6,6 +6,6 @@ scipy
 #tensorboard
 gym
 pytorch
-torchvision
 jupyter-lab
+tqdm
 #cudatoolkit==11.0
