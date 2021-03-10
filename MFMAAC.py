@@ -4,6 +4,9 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 #from pytorch_lightning.core.lightning import LightningModule
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class MFMAAC(nn.Module):
 
 	def __init__(self, num_inputs=1, num_actions=10, hidden_size=128, learning_rate=3e-4):
@@ -23,7 +26,7 @@ class MFMAAC(nn.Module):
 
 
 	def forward(self, state):
-		Deltas = state.Deltas.reshape((-1, 1)).float()
+		Deltas = state.Deltas.reshape((-1, 1)).float().to(device)
 		Deltas = F.relu(self.affine(Deltas))
 		state_value = self.value_layer(Deltas)
 
@@ -38,7 +41,7 @@ class MFMAAC(nn.Module):
 		return action, action_probs
 
 
-	def calculate_loss(self, gamma=0.99):
+	def calculate_loss(self, gamma=0.995):
 
 		# calculating discounted rewards:
 		rewards = []
@@ -48,13 +51,14 @@ class MFMAAC(nn.Module):
 			rewards.insert(0, dis_reward)
 
 		# normalizing the rewards:
-		rewards = torch.stack(rewards).float().squeeze()
-		rewards = (rewards - rewards.mean(dim=0)) / rewards.std(dim=0) # calc along axis of time for each particle
+		rewards = torch.stack(rewards).float().squeeze().to(device)
+		rewards /= rewards.std(dim=0)
+		#rewards = (rewards - rewards.mean(dim=0)) / rewards.std(dim=0) # calc along axis of time for each particle
 
-		loss = torch.tensor(0.).reshape((1,))
+		loss = torch.tensor(0.).reshape((1,)).to(device)
 		amount = self.rewards[0].numel()
-		logprobs = torch.stack(self.logprobs).squeeze()
-		values = torch.stack(self.state_values).squeeze()
+		logprobs = torch.stack(self.logprobs).squeeze().to(device)
+		values = torch.stack(self.state_values).squeeze().to(device)
 
 		for i in range(amount):
 			for logprob, value, reward in zip(logprobs.T[i], values.T[i], rewards.T[i]):
