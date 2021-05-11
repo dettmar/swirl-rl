@@ -38,7 +38,7 @@ if __name__ == "__main__":
 	scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda ep: 0.95**(ep-lr_decay_start) if ep > lr_decay_start else 1.0)
 	epochs = 500
 	measurements = 2000
-	attempt = 69
+	attempt = 74
 	timestep_size = 10 # 10*.2s*4deg/s = max 8 deg (enough to see new behaviour)
 	rewards = []
 	angles = []
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 			prev_action = action.clone()
 
 			if rad2deg(env.states[-1].Deltas).mean() > 200 or rad2deg(env.states[-1].Deltas).mean() < -20:
-				tqdm.write("Particles too far outside range. Interrupting training.")
+				tqdm.write("Delta too far outside range. Interrupting training.")
 				break
 			
 			if ORs.mean() < -.5:
@@ -164,10 +164,7 @@ if __name__ == "__main__":
 			weightpath = f"mfmaac{attempt:03d}_epochs{epoch}of{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
 			weightpath = os.path.join(weight_dir, weightpath)
 			torch.save(mfmaac.state_dict(), weightpath)
-			tqdm.write("Storing weights:", weightpath)
-			
-		
-		
+			tqdm.write(f"Storing weights: {weightpath}")
 
 	weightpath = f"mfmaac{attempt:03d}_epochs{epochs}_measure{measurements}_timesteps{timestep_size}_{datetime.datetime.now():%Y%m%d-%H%M%S}.pt"
 	weightpath = os.path.join(os.path.dirname(__file__), "weights", weightpath)
