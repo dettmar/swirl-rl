@@ -26,7 +26,7 @@ class ActorCriticDiscrete(nn.Module):
 
 
 	def forward(self, state):
-		Delta = state.Delta
+		Delta = state.Deltas
 		OR = state.O_R
 		Delta = Delta.reshape((1,)).float()
 		Delta = F.relu(self.affine(Delta))
@@ -34,7 +34,7 @@ class ActorCriticDiscrete(nn.Module):
 		state_value = self.value_layer(Delta)
 
 		action_probs = F.softmax(self.action_layer(Delta))
-		print("action_probs", "%.2f "*3 % tuple(action_probs.tolist()))
+		print("action_probs", "%.2f "*2 % tuple(action_probs.tolist()))
 		action_distribution = Categorical(action_probs)
 		action = action_distribution.sample()
 		self.logprobs.append(action_distribution.log_prob(action))
@@ -73,18 +73,13 @@ class ActorCriticDiscrete(nn.Module):
 		return loss
 
 
-	def calculateLoss(self, gamma=0.99):
+	def calculateLoss(self, gamma=0.995):
 
 		# calculating discounted rewards:
-		#rewards = self.rewards.copy()
-
-		#print("self.rewards", self.rewards)
-		#print("rewards befo", rewards)
 
 		# normalizing the rewards:
 		rewards = torch.tensor(self.rewards).reshape((-1,1)).float()
 		#rewards = (rewards - rewards.mean()) / (rewards.std())
-		#print("rewards afte", rewards)
 		rewards /= rewards.std()
 
 		loss = 0#torch.tensor(0.).reshape((1,))
